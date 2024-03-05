@@ -1,7 +1,8 @@
 #include "Main.h"
 
+extern "C" void Asm_Test();
+
 // AsFrame_DC
-HBRUSH AsFrame_DC::BF_Brush = (HBRUSH)(COLOR_WINDOW + 1);
 //------------------------------------------------------------------------------------------------------------
 AsFrame_DC::~AsFrame_DC()
 {
@@ -13,8 +14,10 @@ AsFrame_DC::~AsFrame_DC()
 }
 //------------------------------------------------------------------------------------------------------------
 AsFrame_DC::AsFrame_DC()
-	: Width(0), Height(0), DC(0), Bitmap(0)
+: Width(0), Height(0), DC(0), Bitmap(0), BG_Brush(0)
 {
+	BG_Brush = CreateSolidBrush(RGB(0, 0, 0));
+	White_Pen = CreatePen(PS_SOLID, 0, RGB(255, 255, 255) );
 }
 //------------------------------------------------------------------------------------------------------------
 HDC AsFrame_DC::Get_DC(HWND hwnd, HDC hdc)
@@ -45,7 +48,7 @@ HDC AsFrame_DC::Get_DC(HWND hwnd, HDC hdc)
 		++rect.right;
 		++rect.bottom;
 
-		SelectObject(DC, BF_Brush);
+		SelectObject(DC, BG_Brush);
 		Rectangle(DC, rect.left, rect.top, rect.right, rect.bottom);
 	}
 
@@ -121,7 +124,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 	wcex.hInstance = hInstance;
 	wcex.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_MANDELBROT));
 	wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
-	wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+	wcex.hbrBackground = Frame_DC.BG_Brush;
 	wcex.lpszMenuName = MAKEINTRESOURCEW(IDC_MANDELBROT);
 	wcex.lpszClassName = szWindowClass;
 	wcex.hIconSm = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
@@ -129,20 +132,28 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 	return RegisterClassExW(&wcex);
 }
 //------------------------------------------------------------------------------------------------------------
-BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
+BOOL InitInstance(HINSTANCE instance, int command_show)
 {
-	hInst = hInstance; // Store instance handle in our global variable
 
-	HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-		CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
+	HWND hwnd;
+	RECT window_rect;
 
-	if (!hWnd)
-	{
+	hInst = instance;
+
+	window_rect.left = 0;
+	window_rect.top = 0;
+	window_rect.right = 320 * 3;
+	window_rect.bottom = 200 * 3;
+
+	AdjustWindowRect(&window_rect, WS_OVERLAPPEDWINDOW - WS_THICKFRAME, TRUE);
+
+	hwnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW - WS_THICKFRAME, 0, 0, window_rect.right - window_rect.left, window_rect.bottom - window_rect.top, 0, 0, instance, 0);
+
+	if (hwnd == 0)
 		return FALSE;
-	}
 
-	ShowWindow(hWnd, nCmdShow);
-	UpdateWindow(hWnd);
+	ShowWindow(hwnd, command_show);
+	UpdateWindow(hwnd);
 
 	return TRUE;
 }
@@ -155,6 +166,13 @@ void On_Paint(HWND hwnd)
 	hdc = BeginPaint(hwnd, &ps);
 	frame_dc = Frame_DC.Get_DC(hwnd, hdc);
 	//Engine.Draw_Frame(frame_dc, ps.rcPaint);
+
+	Asm_Test();
+
+	SelectObject(frame_dc, Frame_DC.White_Pen);
+
+	MoveToEx(frame_dc, 100, 200, 0);
+	LineTo(frame_dc, 300, 400);
 
 	BitBlt(hdc, 0, 0, Frame_DC.Width, Frame_DC.Height, frame_dc, 0, 0, SRCCOPY);
 

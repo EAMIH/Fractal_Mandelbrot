@@ -16,6 +16,9 @@
     <Filter Include="main">
       <UniqueIdentifier>{d92ac59f-87a5-4685-8882-0186dfaf331d}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Tools">
+      <UniqueIdentifier>{7feb1902-8cc1-40e8-95ba-849d66b3522a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="framework.h">
@@ -48,5 +51,10 @@
     <ClCompile Include="main.cpp">
       <Filter>main</Filter>
     </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <MASM Include="Asm_Tools.asm">
+      <Filter>Tools</Filter>
+    </MASM>
   </ItemGroup>
 </Project>

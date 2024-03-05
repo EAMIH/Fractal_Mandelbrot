@@ -13,8 +13,8 @@ public:
 	HDC Get_DC(HWND hwnd, HDC hdc);
 
 	int Width, Height;
-
-	static HBRUSH BF_Brush;
+	HBRUSH BG_Brush;
+	HPEN White_Pen;
 
 private:
 	HDC DC;
