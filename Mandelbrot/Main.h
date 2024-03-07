@@ -4,6 +4,31 @@
 #include "framework.h"
 
 //------------------------------------------------------------------------------------------------------------
+struct SPoint
+{
+	SPoint();
+
+	SPoint(unsigned short x, unsigned short y);
+
+	unsigned short X, Y;
+};
+//------------------------------------------------------------------------------------------------------------
+struct SSize
+{
+	SSize();
+
+	SSize(unsigned short width, unsigned short height);
+
+	unsigned short Width, Height;
+};
+//------------------------------------------------------------------------------------------------------------
+struct SBuf_Color
+{
+	SSize Buf_Size;
+
+	unsigned int Color;
+};
+//------------------------------------------------------------------------------------------------------------
 class AsFrame_DC
 {
 public:
@@ -11,13 +36,18 @@ public:
 	AsFrame_DC();
 
 	HDC Get_DC(HWND hwnd, HDC hdc);
+	char *Get_Buf();
 
-	int Width, Height;
+	//int Width, Height;
+	SSize Buf_Size;
 	HBRUSH BG_Brush;
 	HPEN White_Pen;
 
 private:
 	HDC DC;
 	HBITMAP Bitmap;
+	char *Bitmap_Buf;
 };
 //------------------------------------------------------------------------------------------------------------
+extern "C" void Asm_Draw(char *video_buf, SSize size);
+extern "C" void Asm_Draw_Line(char *video_buf, SPoint start_point, SPoint end_point, SBuf_Color buf_color);

@@ -1,6 +1,36 @@
 #include "Main.h"
 
-extern "C" void Asm_Test();
+// SPoint
+//------------------------------------------------------------------------------------------------------------
+SPoint::SPoint()
+: X(0), Y(0)
+{
+}
+//------------------------------------------------------------------------------------------------------------
+SPoint::SPoint(unsigned short x, unsigned short y)
+: X(x), Y(y)
+{
+}
+//------------------------------------------------------------------------------------------------------------
+
+
+
+
+// SSize
+//------------------------------------------------------------------------------------------------------------
+SSize::SSize()
+: Width(0), Height(0)
+{
+}
+//------------------------------------------------------------------------------------------------------------
+SSize::SSize(unsigned short width, unsigned short height)
+: Width(width), Height(height)
+{
+}
+//------------------------------------------------------------------------------------------------------------
+
+
+
 
 // AsFrame_DC
 //------------------------------------------------------------------------------------------------------------
@@ -14,7 +44,7 @@ AsFrame_DC::~AsFrame_DC()
 }
 //------------------------------------------------------------------------------------------------------------
 AsFrame_DC::AsFrame_DC()
-: Width(0), Height(0), DC(0), Bitmap(0), BG_Brush(0)
+: DC(0), Bitmap(0), BG_Brush(0), Bitmap_Buf(0)
 {
 	BG_Brush = CreateSolidBrush(RGB(0, 0, 0));
 	White_Pen = CreatePen(PS_SOLID, 0, RGB(255, 255, 255) );
@@ -24,13 +54,14 @@ HDC AsFrame_DC::Get_DC(HWND hwnd, HDC hdc)
 {
 	int dc_width, dc_height;
 	RECT rect;
+	BITMAPINFO bmp_info{};
 
 	GetClientRect(hwnd, &rect);
 
 	dc_width = rect.right - rect.left;
 	dc_height = rect.bottom - rect.top;
 
-	if (dc_width != Width && dc_height != Height)
+	if (dc_width != Buf_Size.Width && dc_height != Buf_Size.Height)
 	{
 		if (Bitmap != 0)
 			DeleteObject(Bitmap);
@@ -38,12 +69,23 @@ HDC AsFrame_DC::Get_DC(HWND hwnd, HDC hdc)
 		if (DC != 0)
 			DeleteObject(DC);
 
-		Width = dc_width;
-		Height = dc_height;
+		Buf_Size.Width = dc_width;
+		Buf_Size.Height = dc_height;
 
 		DC = CreateCompatibleDC(hdc);
-		Bitmap = CreateCompatibleBitmap(hdc, Width, Height);
-		SelectObject(DC, Bitmap);
+		//Bitmap = CreateCompatibleBitmap(hdc, Width, Height);
+
+		bmp_info.bmiHeader.biSize = sizeof(BITMAPINFO);
+		bmp_info.bmiHeader.biWidth = Buf_Size.Width;
+		bmp_info.bmiHeader.biHeight = Buf_Size.Height;
+		bmp_info.bmiHeader.biPlanes = 1;
+		bmp_info.bmiHeader.biBitCount = 32;
+		bmp_info.bmiHeader.biCompression = BI_RGB;
+
+		Bitmap = CreateDIBSection(hdc, &bmp_info, DIB_RGB_COLORS, (void **)&Bitmap_Buf, 0, 0);
+
+		if (Bitmap != 0)
+			SelectObject(DC, Bitmap);
 
 		++rect.right;
 		++rect.bottom;
@@ -53,6 +95,11 @@ HDC AsFrame_DC::Get_DC(HWND hwnd, HDC hdc)
 	}
 
 	return DC;
+}
+//------------------------------------------------------------------------------------------------------------
+char *AsFrame_DC::Get_Buf()
+{
+	return Bitmap_Buf;
 }
 //------------------------------------------------------------------------------------------------------------
 
@@ -160,21 +207,33 @@ BOOL InitInstance(HINSTANCE instance, int command_show)
 //------------------------------------------------------------------------------------------------------------
 void On_Paint(HWND hwnd)
 {
+	char *buf;
 	HDC hdc, frame_dc;
 	PAINTSTRUCT ps;
+	SPoint start_point(100, 200);
+	SPoint end_point(300, 400);
+	SBuf_Color buf_color;
 
 	hdc = BeginPaint(hwnd, &ps);
 	frame_dc = Frame_DC.Get_DC(hwnd, hdc);
 	//Engine.Draw_Frame(frame_dc, ps.rcPaint);
 
-	Asm_Test();
+	GdiFlush();
+
+	buf = Frame_DC.Get_Buf();
+	//Asm_Draw(buf, Frame_DC.Buf_Size);
+
+	buf_color.Buf_Size = Frame_DC.Buf_Size;
+	buf_color.Color = 0xffffffff;
+
+	Asm_Draw_Line(buf, start_point, end_point, buf_color);
 
 	SelectObject(frame_dc, Frame_DC.White_Pen);
 
 	MoveToEx(frame_dc, 100, 200, 0);
 	LineTo(frame_dc, 300, 400);
 
-	BitBlt(hdc, 0, 0, Frame_DC.Width, Frame_DC.Height, frame_dc, 0, 0, SRCCOPY);
+	BitBlt(hdc, 0, 0, Frame_DC.Buf_Size.Width, Frame_DC.Buf_Size.Height, frame_dc, 0, 0, SRCCOPY);
 
 	EndPaint(hwnd, &ps);
 }
