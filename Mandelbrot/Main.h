@@ -51,3 +51,4 @@ private:
 //------------------------------------------------------------------------------------------------------------
 extern "C" void Asm_Draw(char *video_buf, SSize size);
 extern "C" void Asm_Draw_Line(char *video_buf, SPoint start_point, SPoint end_point, SBuf_Color buf_color);
+extern "C" void Asm_Draw_Horizontal_Line(char *video_buf, SPoint start_point, int length, SBuf_Color buf_color);
