@@ -24,25 +24,25 @@ Get_Address proc
 ; RDX - start_point
 ; R9 - buf_color
 ; R11 - video_buf
-; Возврат: PDI - адрес пикселя
+; Возврат: RDI - адрес пикселя
 
 	push rax
 	push rbx
 	push r10
 
-	movzx r10, r9w	; R10 = R10W = buf_color.Buf_Size.Width
+	movzx r10, r9w  ; R10 = R10W = buf_color.Buf_Size.Width
 
 	mov rax, rdx
 	shr rax, 16
-	movzx rax, ax	; RAX = AX = start_point.Y
+	movzx rax, ax  ; RAX = AX = start_point.Y
 
-	movzx rbx, dx	; RBX = BX = start_point.X
+	movzx rbx, dx  ; RBX = BX = start_point.X
 
-	imul rax, r10	; RAX = RAX * R10 = start_point.Y * buf_color.Buf_Size.Width
-	add rax, rbx	; RAX = index =  start_point.Y * buf_color.Buf_Size.Width + start_point.X
-	shl rax, 2		; RAX = index * 4 - адрес пикселя в буфере
+	imul rax, r10  ; RAX = RAX * R10 = start_point.Y * buf_color.Buf_Size.Width
+	add rax, rbx  ; RAX = index = start_point.Y * buf_color.Buf_Size.Width + start_point.X
+	shl rax, 2  ; RAX = index * 4 - адрес пикселя в буфере
 
-	mov rdi, r11	; R11 = video_buf
+	mov rdi, r11  ; R11 = video_buf
 	add rdi, rax
 
 	pop r10
@@ -73,66 +73,65 @@ Asm_Draw_Line proc
 	push r15
 
 	mov r11, rcx
-
+	
 	; 1. Ожидаем координаты конечной точки не меньше, чем начальной
 	; 1.1. Проверяем X
 	cmp r8w, dx
 	jbe _exit
 
-
-	; 1.2. Проверям Y
+	; 1.2. Проверяем Y
 	mov eax, edx
-	shr eax, 16			; EAX = AX = start_point.Y
+	shr eax, 16  ; EAX = AX = start_point.Y
 
 	mov ebx, r8d
-	shr ebx, 16			; EBX = AX = end_point.Y
+	shr ebx, 16  ; EBX = BX = end_point.Y
 
 	cmp bx, ax
 	jbe _exit
 
-	; 2. Вычисляем адрес начала линии 
-	call Get_Address	; RDI = адрес в  буфере соответствующий позиции start_point
+	; 2. Вычисляем адрес начала линии
+	call Get_Address  ; RDI = адрес в буфере, соответствующий позиции start_point
 
-	mov ax, r8w			; AX = end_point.X
-	sub ax, dx			; AX = AX - DX = end_point.X - start_point.X = delta_x
+	mov ax, r8w  ; AX = end_point.X
+	sub ax, dx  ; AX = AX - DX = end_point.X - start_point.X = delta_x
 	inc ax
-	mov r12w, ax		; R12W = delta_x
+	mov r12w, ax  ; R12W = delta_x
 
 	mov ebx, r8d
-	shr ebx, 16			; EBX = BX = end_point.Y
-	
+	shr ebx, 16  ; EBX = BX = end_point.Y
+
 	mov ecx, edx
-	shr ecx, 16			; ECX = CX = start_point.X
-	
-	sub bx, cx			; BX = BX - CX = end_point.Y - start_point.Y = delta_y
+	shr ecx, 16  ; ECX = CX = start_point.Y
+
+	sub bx, cx  ; BX = end_point.Y - start_point.Y = delta_y
 	inc bx
-	mov r13w, bx		; R13W = delta_y
+	mov r13w, bx  ; R13W = delta_y
 
 	; 3. Выбираем алгоритм - линия ближе к горизонтали или к вертикали
 	cmp ax, bx
 	jle _draw_vertical
 
+; _draw_horizontal:
+	; 4/14 + 4/14 = 8/14 + 4/14 = 12/14 + 4/14 = 16/14 = 1 (2/14)
 
-_draw_horizontal:
-	
-	xor r14w, r14w		; Накопитель числителя
+	xor r14w, r14w  ; Накопитель числителя
 
-	movzx rcx, r13w		; RCX = delta_y = количество итераций
+	movzx rcx, r13w  ; RCX = delta_y = количество итераций
 
-	movzx r15, r9w		; R15 = buf_color.Buf_Size.Width
-	shl r15, 2			; R15 = buf_color.Buf_Size.Width * 4 = изменение адреса для перехода на следующую строку
+	movzx r15, r9w  ; R15 = buf_color.Buf_Size.Width
+	shl r15, 2  ; R15 = buf_color.Buf_Size.Width * 4 = изменение адреса для перехода на следующую строку
 
 	mov rax, r9
-	shr rax, 32			; RAX = EAX = buf_color.Color
+	shr rax, 32  ; RAX = EAX = buf_color.Color
 
 _draw_horizontal_pixel:
 	stosd
 
-	add r14w, r13w		; Добавили числитель (delta_y)
+	add r14w, r13w  ; Добавили числитель (delta_y)
 	cmp r14w, r12w
 	jl _draw_horizontal_pixel
 
-	sub r14w, r12w		; Вычитаем значенатель (delta_x) из накопленного числителя
+	sub r14w, r12w  ; Вычитаем знаменатель (delta_x) из накопленного числителя
 
 	add rdi, r15
 	loop _draw_horizontal_pixel
@@ -140,33 +139,32 @@ _draw_horizontal_pixel:
 	jmp _exit
 
 _draw_vertical:
-		
-	xor r14w, r14w		; Накопитель числителя
+	xor r14w, r14w  ; Накопитель числителя
 
-	movzx rcx, r12w		; RCX = delta_x = количество итераций
+	movzx rcx, r12w  ; RCX = delta_x = количество итераций
 
-	movzx r15, r9w		; R15 = buf_color.Buf_Size.Width
+	movzx r15, r9w  ; R15 = buf_color.Buf_Size.Width
 	dec r15
-	shl r15, 2			; R15 = buf_color.Buf_Size.Width * 4 = изменение адреса для перехода на следующую строку
+	shl r15, 2  ; R15 = buf_color.Buf_Size.Width * 4 = изменение адреса для перехода на следующую строку
 
 	mov rax, r9
-	shr rax, 32			; RAX = EAX = buf_color.Color
+	shr rax, 32  ; RAX = EAX = buf_color.Color
 
 _draw_vertical_pixel:
 	stosd
 	add rdi, r15
 
-	add r14w, r12w		; Добавили числитель (delta_x)
+	add r14w, r12w  ; Добавили числитель (delta_x)
 	cmp r14w, r13w
 	jl _draw_vertical_pixel
 
-	sub r14w, r13w		; Вычитаем значенатель (delta_y) из накопленного числителя
+	sub r14w, r13w  ; Вычитаем знаменатель (delta_y) из накопленного числителя
 
 	add rdi, 4
 	loop _draw_vertical_pixel
 
-_exit:
 
+_exit:
 	pop r15
 	pop r14
 	pop r13
@@ -183,7 +181,7 @@ _exit:
 Asm_Draw_Line endp
 ;-------------------------------------------------------------------------------------------------------------
 Asm_Draw_Horizontal_Line proc
-; extern "C" void Asm_Draw_Line(char *video_buf, SPoint start_point, int length, SBuf_Color buf_color);
+; extern "C" void Asm_Draw_Horizontal_Line(char *video_buf, SPoint start_point, int length, SBuf_Color buf_color);
 ; Параметры:
 ; RCX - video_buf
 ; RDX - start_point
@@ -197,15 +195,15 @@ Asm_Draw_Horizontal_Line proc
 	push r11
 
 	mov r11, rcx
-
+	
 	; 1. Вычисляем адрес начала линии
-	call Get_Address	; RDI = адрес в буфере соответствующий позиции start_point
-
-	mov rax, r9
-	shr rax, 32		; RAX = EAX = buf_color.Color
+	call Get_Address  ; RDI = адрес в буфере, соответствующий позиции start_point
 
 	; 2. Выводим линию
-	mov rcx, r8		; RCX = length = количество пикселей в линии
+	mov rcx, r8  ; RCX = length = количество пикселей в линии
+
+	mov rax, r9
+	shr rax, 32  ; RAX = EAX = buf_color.Color
 
 	rep stosd
 

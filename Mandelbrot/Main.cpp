@@ -109,6 +109,7 @@ char *AsFrame_DC::Get_Buf()
 //------------------------------------------------------------------------------------------------------------
 #define MAX_LOADSTRING 100
 // Global Variables:
+float Main_Scale = 1.0f;
 AsFrame_DC Frame_DC;
 HINSTANCE hInst;                                // current instance
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
@@ -205,7 +206,7 @@ BOOL InitInstance(HINSTANCE instance, int command_show)
 	return TRUE;
 }
 //------------------------------------------------------------------------------------------------------------
-void Clear_Screen(HWND hwnd, HDC frame_dc)
+void Clear_Screen(HDC frame_dc)
 {
 	int i;
 	char *buf;
@@ -220,65 +221,122 @@ void Clear_Screen(HWND hwnd, HDC frame_dc)
 	buf_color.Buf_Size = Frame_DC.Buf_Size;
 	buf_color.Color = 0xffffffff;
 
-	
-
 	start_tick = __rdtsc();
-	for(i = 0; i < Frame_DC.Buf_Size.Height; i++)
+
+	for (i = 0; i < Frame_DC.Buf_Size.Height; i++)
 	{
 		start_point.Y = i;
 		Asm_Draw_Horizontal_Line(buf, start_point, Frame_DC.Buf_Size.Width, buf_color);
 	}
-	end_tick = __rdtsc();
-	delta_tick = end_tick - start_tick;
-	int yy;										
 
 	//SelectObject(frame_dc, Frame_DC.White_Pen);
 
+	//for (i = 0; i < Frame_DC.Buf_Size.Height; i++)
+	//{
+	//	MoveToEx(frame_dc, 0, i, 0);
+	//	LineTo(frame_dc, Frame_DC.Buf_Size.Width, i);
+	//}
 
-	// for(int i = 0; i < Frame_DC.Buf_Size.Height; i++)
-	// {
-	// 	MoveToEx(frame_dc, 0, i, 0);
-	// 	LineTo(frame_dc, Frame_DC.Buf_Size.Width, i);
-	// }
-	
+	end_tick = __rdtsc();
+
+	delta_tick = end_tick - start_tick;  // 4135839, 4276307, 4135398;  405340, 412059, 298102
 }
 //------------------------------------------------------------------------------------------------------------
-void Draw_line(HDC frame_dc)
+void Draw_Line(HDC frame_dc)
 {
-	int i;
-	char *buf;
+	int i, j;
+	//char *buf;
 	SPoint start_point(10, 0);
 	SPoint end_point(910, 100);
 	SBuf_Color buf_color;
 	unsigned long long start_tick, end_tick, delta_tick;
 
-	 buf = Frame_DC.Get_Buf();
-	 //Asm_Draw(buf, Frame_DC.Buf_Size);
-	 
-	 buf_color.Buf_Size = Frame_DC.Buf_Size;
-	 buf_color.Color = 0xffffffff;
-
-	
-	 start_tick = __rdtsc();
-	 for(i = 0; i < Frame_DC.Buf_Size.Height - 100; i++)
-	 {
-		 start_point.Y = i;
-		 end_point.Y = i + 100;
-		 Asm_Draw_Line(buf, start_point, end_point, buf_color);
-	 }
-	 end_tick = __rdtsc();
-	 delta_tick = end_tick - start_tick; // 3874912, 3544032, 4108000		1998912, 1522176, 1612736
-
 	SelectObject(frame_dc, Frame_DC.White_Pen);
-	
-	// start_tick = __rdtsc();
-	// for(i = 0; i < Frame_DC.Buf_Size.Height - 100; i++)
-	// {
-	// 	MoveToEx(frame_dc, 10, i, 0);
-	// 	LineTo(frame_dc, 910, i + 100);
-	// }
-	// end_tick = __rdtsc();
-	// delta_tick = end_tick - start_tick; // 3874912, 3544032, 4108000
+
+	start_tick = __rdtsc();
+
+	for (j = 0; j < 1000; j++)
+		for (i = 0; i < Frame_DC.Buf_Size.Height - 100; i++)
+		{
+			MoveToEx(frame_dc, 10, i, 0);
+			LineTo(frame_dc, 910, i + 100);
+		}
+
+	//buf = Frame_DC.Get_Buf();
+	//buf_color.Buf_Size = Frame_DC.Buf_Size;
+	//buf_color.Color = 0xffffffff;
+
+	//for (j = 0; j < 1000; j++)
+	//	for (i = 0; i < Frame_DC.Buf_Size.Height - 100; i++)
+	//	{
+	//		start_point.Y = i;
+	//		end_point.Y = i + 100;
+
+	//		Asm_Draw_Line(buf, start_point, end_point, buf_color);
+	//	}
+
+	end_tick = __rdtsc();
+
+	delta_tick = end_tick - start_tick;  // 3794444, 3736534, 3661211;  991257, 834824, 812938
+													 // 79445658, 79462206, 81834156;  876670586, 897536322, 886424207
+													 //										  3733109658, 3675917672, 3761133071
+}
+//------------------------------------------------------------------------------------------------------------
+void Draw_Mandelbrot(HDC frame_dc)
+{
+	int i;
+	int x, y;
+	const int max_iter_count = 100;
+	float x_0, y_0;
+	float x_n, y_n;
+	float x_n1, y_n1;
+	float center_x = -1.0f + 0.005606f;
+	float center_y = -0.3f;
+	float x_scale = (float)Frame_DC.Buf_Size.Width / (float)Frame_DC.Buf_Size.Height * Main_Scale;
+	float distance;
+	unsigned char color;
+	unsigned long long start_tick, end_tick, delta_tick;
+
+	start_tick = __rdtsc();
+
+	for (y = 0; y < Frame_DC.Buf_Size.Height; y++)
+	{
+		y_0 = (float)y / (float)Frame_DC.Buf_Size.Height - 0.5f;  // \CF\EE\EB\F3\F7\E0\E5\EC y_0 \E2 \E4\E8\E0\EF\E0\E7\EE\ED\E5 [-0.5 .. 0.5)
+		y_0 = y_0 * Main_Scale + center_y;
+
+		for (x = 0; x < Frame_DC.Buf_Size.Width; x++)
+		{
+			x_0 = (float)x / (float)Frame_DC.Buf_Size.Width - 0.5f;  // \CF\EE\EB\F3\F7\E0\E5\EC x_0 \E2 \E4\E8\E0\EF\E0\E7\EE\ED\E5 [-0.5 .. 0.5)
+			x_0 = x_0 * x_scale + center_x;
+
+			x_n = 0.0f;
+			y_n = 0.0f;
+
+			for (i = 0; i < max_iter_count; i++)
+			{
+				x_n1 = x_n * x_n - y_n * y_n + x_0;
+				y_n1 = 2.0f * x_n * y_n + y_0;
+
+				distance = x_n1 * x_n1 + y_n1 * y_n1;
+				if (distance > 4.0f)
+					break;
+
+				x_n = x_n1;
+				y_n = y_n1;
+			}
+
+			if (i == max_iter_count)
+				color = 0;
+			else
+				color = i * 2;
+
+			SetPixel(frame_dc, x, y, RGB(color, color, color));
+		}
+	}
+	end_tick = __rdtsc();
+	delta_tick = end_tick - start_tick;  // 5093001763, 3751900039, 5200691303
+
+	SetPixel(frame_dc, Frame_DC.Buf_Size.Width / 2, Frame_DC.Buf_Size.Height / 2, RGB(255, 255, 255));  // 3820570558, 3829638160, 3826690214
 }
 //------------------------------------------------------------------------------------------------------------
 void On_Paint(HWND hwnd)
@@ -287,14 +345,18 @@ void On_Paint(HWND hwnd)
 	PAINTSTRUCT ps;
 
 	hdc = BeginPaint(hwnd, &ps);
-	//Engine.Draw_Frame(frame_dc, ps.rcPaint);
-
 	frame_dc = Frame_DC.Get_DC(hwnd, hdc);
+	//Engine.Draw_Frame(frame_dc, ps.rcPaint);
 
 	GdiFlush();
 
-	//Clear_Screen(hwnd, frame_dc);
-	Draw_line(frame_dc);
+	//Clear_Screen(frame_dc);
+	//Draw_Line(frame_dc);
+
+	Main_Scale /= 2.0f;
+
+	Draw_Mandelbrot(frame_dc);
+	InvalidateRect(hwnd, &ps.rcPaint, FALSE);
 
 	BitBlt(hdc, 0, 0, Frame_DC.Buf_Size.Width, Frame_DC.Buf_Size.Height, frame_dc, 0, 0, SRCCOPY);
 
