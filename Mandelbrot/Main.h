@@ -14,6 +14,30 @@ struct SRGB
 	unsigned char R, G, B;
 };
 //------------------------------------------------------------------------------------------------------------
+struct SPoint_Double
+{
+	SPoint_Double();
+	SPoint_Double(double x, double y);
+
+	double X, Y;
+};
+//------------------------------------------------------------------------------------------------------------
+struct SPacked_XY
+{
+	double Y0;
+	double X0_1, X0_2;	// SIMD-пакет из 2-х значений
+};
+//------------------------------------------------------------------------------------------------------------
+struct SPacked_XY_4
+{
+	SPacked_XY_4();
+
+	// SIMD-пакеты из 4-х значений
+	double Four_Fours[4];
+	double X0[4];
+	double Y0[4];
+};
+//------------------------------------------------------------------------------------------------------------
 struct SPoint
 {
 	SPoint();
@@ -81,3 +105,6 @@ extern "C" void Asm_Draw_Line(char *video_buf, SPoint start_point, SPoint end_po
 extern "C" void Asm_Draw_Horizontal_Line(char *video_buf, SPoint start_point, int length, SBuf_Color buf_color);
 extern "C" void Asm_Set_Pixel(char *video_buf, SPoint point, SBuf_Color buf_color);
 extern "C" int Asm_Get_Mandelbrot_Index(char *video_buf, double x_0, double y_0, int colors_count);
+extern "C" int Asm_Set_Mandelbrot_Point(char *video_buf, SPoint_Double *xy_0, int *palette_rgb, int colors_count);
+extern "C" int Asm_Set_Mandelbrot_2_Points(char *video_buf, SPacked_XY *xy_0, int *palette_rgb, int colors_count);
+extern "C" int Asm_Set_Mandelbrot_4_Points(char *video_buf, SPacked_XY_4 *packed_xy, int *palette_rgb, int colors_count);

@@ -1,5 +1,33 @@
 #include "Main.h"
 
+// SPoint_Double
+//------------------------------------------------------------------------------------------------------------
+SPoint_Double::SPoint_Double()
+: X(0), Y(0)
+{
+}
+//------------------------------------------------------------------------------------------------------------
+SPoint_Double::SPoint_Double(double x, double y)
+: X(x), Y(y)
+{
+}
+//------------------------------------------------------------------------------------------------------------
+
+
+
+// SPacked_XY_4
+//------------------------------------------------------------------------------------------------------------
+SPacked_XY_4::SPacked_XY_4()
+{
+	int i;
+	for(i = 0; i < 4; i++)
+		Four_Fours[i] = 4.0;
+}
+//------------------------------------------------------------------------------------------------------------
+
+
+
+
 // SPoint
 //------------------------------------------------------------------------------------------------------------
 SPoint::SPoint()
@@ -282,9 +310,7 @@ void AsFrame_DC::Draw_Grayscale_Palette(HDC hdc)
 }
 //------------------------------------------------------------------------------------------------------------
 int AsFrame_DC::Color_To_RGB(int color)
-{// Параметры:
- //   color = [0 .. 360) = H для HSV, S = 1.0, V = 1.0
- // Возврат: RGB
+{
 
 	unsigned char r, g, b;
 	unsigned char v_inc, v_dec;
@@ -548,12 +574,12 @@ void Draw_Mandelbrot(HDC frame_dc)
 
 	for (y = 0; y < Frame_DC.Buf_Size.Height; y++)
 	{
-		y_0 = (double)y / (double)Frame_DC.Buf_Size.Height - 0.5;  // Получаем y_0 в диапазоне [-0.5 .. 0.5)
+		y_0 = (double)y / (double)Frame_DC.Buf_Size.Height - 0.5; 
 		y_0 = y_0 * Main_Scale + Center_Y;
 
 		for (x = 0; x < Frame_DC.Buf_Size.Width; x++)
 		{
-			x_0 = (double)x / (double)Frame_DC.Buf_Size.Width - 0.5;  // Получаем x_0 в диапазоне [-0.5 .. 0.5)
+			x_0 = (double)x / (double)Frame_DC.Buf_Size.Width - 0.5; 
 			x_0 = x_0 * x_scale + Center_X;
 
 			x_n = 0.0;
@@ -615,67 +641,46 @@ int Get_Mandelbrot_Index(double x_0, double y_0, int colors_count)
 //------------------------------------------------------------------------------------------------------------
 void Draw_Mandelbrot_Fast(HDC frame_dc)
 {
-	int i;//, asm_i;
+	int i;
 	int x, y;
-	double x_0, y_0;
-	//double x_n, y_n;
-	//double x_n1, y_n1;
+	//double x_0, y_0;
+	//SPacked_XY packed_xy;
+	SPacked_XY_4 packed_xy;
 	double x_scale = (double)Frame_DC.Buf_Size.Width / (double)Frame_DC.Buf_Size.Height * Main_Scale;
-	//double distance;
-	int color;
+	//int color;
 	unsigned long long start_tick, end_tick, delta_tick;
 	SBuf_Color buf_color;
 	char *video_buf;
+	char *curr_video_buf;
 	SPoint point;
+	//SPoint_Double xy_0;
 
 	video_buf = Frame_DC.Get_Buf();
+	curr_video_buf = video_buf;
 	buf_color.Buf_Size = Frame_DC.Buf_Size;
 
 	start_tick = __rdtsc();
 
 	for (y = 0; y < Frame_DC.Buf_Size.Height; y++)
 	{
-		y_0 = (double)y / (double)Frame_DC.Buf_Size.Height - 0.5;  // Получаем y_0 в диапазоне [-0.5 .. 0.5)
-		y_0 = y_0 * Main_Scale + Center_Y;
+		packed_xy.Y0[0] = (double)y / (double)Frame_DC.Buf_Size.Height - 0.5; 
+		packed_xy.Y0[0] = packed_xy.Y0[0] * Main_Scale + Center_Y;
 
-		for (x = 0; x < Frame_DC.Buf_Size.Width; x++)
+		for(i = 1; i < 4; i++)
+			packed_xy.Y0[i] = packed_xy.Y0[0];
+
+		for (x = 0; x < Frame_DC.Buf_Size.Width; x += 4)
 		{
-			x_0 = (double)x / (double)Frame_DC.Buf_Size.Width - 0.5;  // Получаем x_0 в диапазоне [-0.5 .. 0.5)
-			x_0 = x_0 * x_scale + Center_X;
+			for(i = 0; i < 4; i++)
+			{
+				packed_xy.X0[i] = (double)(x + i) / (double)Frame_DC.Buf_Size.Width - 0.5;  
+				packed_xy.X0[i] = packed_xy.X0[i] * x_scale + Center_X;
+			}
 
-			//x_n = 0.0;
-			//y_n = 0.0;
 
-			//for (i = 0; i < Frame_DC.Colors_Count; i++)
-			//{
-			//	x_n1 = x_n * x_n - y_n * y_n + x_0;
-			//	y_n1 = 2.0 * x_n * y_n + y_0;
+			Asm_Set_Mandelbrot_4_Points(curr_video_buf, &packed_xy, Frame_DC.Palette_RGB, Frame_DC.Colors_Count);
 
-			//	distance = x_n1 * x_n1 + y_n1 * y_n1;
-			//	if (distance > 4.0)
-			//		break;
-
-			//	x_n = x_n1;
-			//	y_n = y_n1;
-			//}
-
-			//i = Get_Mandelbrot_Index(x_0, y_0, Frame_DC.Colors_Count);
-
-			i = Asm_Get_Mandelbrot_Index(video_buf, x_0, y_0, Frame_DC.Colors_Count);
-
-			//if (i != asm_i)
-			//	int yy = 0;
-
-			if (i == Frame_DC.Colors_Count)
-				color = 0;
-			else
-				color = Frame_DC.Palette_RGB[i];
-
-			point.X = x;
-			point.Y = y;
-			buf_color.Color = color;
-
-			Asm_Set_Pixel(video_buf, point, buf_color);
+			curr_video_buf += 4 * 4;
 		}
 	}
 	end_tick = __rdtsc();
@@ -684,7 +689,8 @@ void Draw_Mandelbrot_Fast(HDC frame_dc)
 													 // 2727803128, 2765620013, 2706357627
 													 // 1210792061, 2677300722, 2686828144
 													 // 1030110525,  689050866, 1027039255
-
+													 //  674742432,  676086377, 344731616, 346095264, 345074176
+													 //  223087904,  222110752, 223291232
 	SetPixel(frame_dc, Frame_DC.Buf_Size.Width / 2, Frame_DC.Buf_Size.Height / 2, RGB(255, 255, 255));  // 3820570558, 3829638160, 3826690214
 }
 //------------------------------------------------------------------------------------------------------------
