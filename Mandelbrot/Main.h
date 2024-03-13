@@ -4,6 +4,16 @@
 #include "framework.h"
 
 //------------------------------------------------------------------------------------------------------------
+struct SRGB
+{
+	SRGB(unsigned char r, unsigned char g, unsigned char b)
+		: R(r), G(g), B(b)
+	{
+	}
+
+	unsigned char R, G, B;
+};
+//------------------------------------------------------------------------------------------------------------
 struct SPoint
 {
 	SPoint();
@@ -37,16 +47,33 @@ public:
 
 	HDC Get_DC(HWND hwnd, HDC hdc);
 	char *Get_Buf();
+	void Create_Color_Palette();
+	void Create_Web_Palette();
+	void Create_Two_Color_Palette(int start_index, const SRGB &color_1, const SRGB &color_2);
+	void Draw_Color_Palette(HDC hdc);
+	void Draw_Web_Palette(HDC hdc);
+	void Draw_Multi_Color_Palette(HDC hdc);
+	void Draw_Grayscale_Palette(HDC hdc);
 
 	//int Width, Height;
 	SSize Buf_Size;
 	HBRUSH BG_Brush;
 	HPEN White_Pen;
 
+	static const int Colors_Count = 400;
+
+	int Palette_RGB[Colors_Count];
+	int Palette_Web[Colors_Count];
+
 private:
+	int Color_To_RGB(int color);
+
 	HDC DC;
 	HBITMAP Bitmap;
 	char *Bitmap_Buf;
+
+	HPEN Palette_Pens[Colors_Count];
+	HBRUSH Palette_Brush[Colors_Count];
 };
 //------------------------------------------------------------------------------------------------------------
 extern "C" void Asm_Draw(char *video_buf, SSize size);
