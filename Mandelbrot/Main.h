@@ -79,3 +79,5 @@ private:
 extern "C" void Asm_Draw(char *video_buf, SSize size);
 extern "C" void Asm_Draw_Line(char *video_buf, SPoint start_point, SPoint end_point, SBuf_Color buf_color);
 extern "C" void Asm_Draw_Horizontal_Line(char *video_buf, SPoint start_point, int length, SBuf_Color buf_color);
+extern "C" void Asm_Set_Pixel(char *video_buf, SPoint point, SBuf_Color buf_color);
+extern "C" int Asm_Get_Mandelbrot_Index(char *video_buf, double x_0, double y_0, int colors_count);

@@ -49,10 +49,10 @@ AsFrame_DC::AsFrame_DC()
 	BG_Brush = CreateSolidBrush(RGB(0, 0, 0));
 	White_Pen = CreatePen(PS_SOLID, 0, RGB(255, 255, 255) );
 
-	//Create_Color_Palette();
+	Create_Color_Palette();
 	//Create_Web_Palette();
-	Create_Two_Color_Palette(0, SRGB(255, 128, 64), SRGB(0, 128, 64) );
-	Create_Two_Color_Palette(Colors_Count / 2, SRGB(0, 128, 64), SRGB(128, 0, 255) );
+	//Create_Two_Color_Palette(0, SRGB(255, 128, 64), SRGB(0, 128, 64) );
+	//Create_Two_Color_Palette(Colors_Count / 2, SRGB(0, 128, 64), SRGB(128, 0, 255) );
 }
 //------------------------------------------------------------------------------------------------------------
 HDC AsFrame_DC::Get_DC(HWND hwnd, HDC hdc)
@@ -110,11 +110,17 @@ char *AsFrame_DC::Get_Buf()
 void AsFrame_DC::Create_Color_Palette()
 {
 	int i;
-	int rgb_color, color_angle;
+	int rgb_color, color_angle = 0;
 
 	for (i = 0; i < Colors_Count; i++)
 	{
-		color_angle = (int)( (double)i / (double)Colors_Count * 360.0);
+		//color_angle = (int)( (double)i / (double)Colors_Count * 360.0);
+
+		color_angle += 13;
+
+		if (color_angle >= 360)
+			color_angle -= 360;
+
 		rgb_color = Color_To_RGB(color_angle);
 
 		Palette_RGB[i] = rgb_color;
@@ -344,7 +350,12 @@ int AsFrame_DC::Color_To_RGB(int color)
 //------------------------------------------------------------------------------------------------------------
 #define MAX_LOADSTRING 100
 // Global Variables:
-double Main_Scale = 1.0;
+double Main_Scale = 2.0;
+//double Center_X = -0.99439399990001;
+//double Center_Y = -0.3;
+double Center_X = -0.5;
+double Center_Y = 0.0;
+
 
 AsFrame_DC Frame_DC;
 HINSTANCE hInst;                                // current instance
@@ -526,8 +537,8 @@ void Draw_Mandelbrot(HDC frame_dc)
 	double x_0, y_0;
 	double x_n, y_n;
 	double x_n1, y_n1;
-	double center_x = -0.99439399990001;
-	double center_y = -0.3;
+	//double center_x = -0.99439399990001;
+	//double center_y = -0.3;
 	double x_scale = (double)Frame_DC.Buf_Size.Width / (double)Frame_DC.Buf_Size.Height * Main_Scale;
 	double distance;
 	int color;
@@ -538,12 +549,12 @@ void Draw_Mandelbrot(HDC frame_dc)
 	for (y = 0; y < Frame_DC.Buf_Size.Height; y++)
 	{
 		y_0 = (double)y / (double)Frame_DC.Buf_Size.Height - 0.5;  // Получаем y_0 в диапазоне [-0.5 .. 0.5)
-		y_0 = y_0 * Main_Scale + center_y;
+		y_0 = y_0 * Main_Scale + Center_Y;
 
 		for (x = 0; x < Frame_DC.Buf_Size.Width; x++)
 		{
 			x_0 = (double)x / (double)Frame_DC.Buf_Size.Width - 0.5;  // Получаем x_0 в диапазоне [-0.5 .. 0.5)
-			x_0 = x_0 * x_scale + center_x;
+			x_0 = x_0 * x_scale + Center_X;
 
 			x_n = 0.0;
 			y_n = 0.0;
@@ -570,7 +581,109 @@ void Draw_Mandelbrot(HDC frame_dc)
 		}
 	}
 	end_tick = __rdtsc();
+
 	delta_tick = end_tick - start_tick;  // 5093001763, 3751900039, 5200691303
+
+	SetPixel(frame_dc, Frame_DC.Buf_Size.Width / 2, Frame_DC.Buf_Size.Height / 2, RGB(255, 255, 255));  // 3820570558, 3829638160, 3826690214
+}
+//------------------------------------------------------------------------------------------------------------
+int Get_Mandelbrot_Index(double x_0, double y_0, int colors_count)
+{
+	int i;
+	double x_n, y_n;
+	double x_n1, y_n1;
+	double distance;
+
+	x_n = 0.0;
+	y_n = 0.0;
+
+	for (i = 0; i < colors_count; i++)
+	{
+		x_n1 = x_n * x_n - y_n * y_n + x_0;
+		y_n1 = 2.0 * x_n * y_n + y_0;
+
+		distance = x_n1 * x_n1 + y_n1 * y_n1;
+		if (distance > 4.0)
+			break;
+
+		x_n = x_n1;
+		y_n = y_n1;
+	}
+
+	return i;
+}
+//------------------------------------------------------------------------------------------------------------
+void Draw_Mandelbrot_Fast(HDC frame_dc)
+{
+	int i;//, asm_i;
+	int x, y;
+	double x_0, y_0;
+	//double x_n, y_n;
+	//double x_n1, y_n1;
+	double x_scale = (double)Frame_DC.Buf_Size.Width / (double)Frame_DC.Buf_Size.Height * Main_Scale;
+	//double distance;
+	int color;
+	unsigned long long start_tick, end_tick, delta_tick;
+	SBuf_Color buf_color;
+	char *video_buf;
+	SPoint point;
+
+	video_buf = Frame_DC.Get_Buf();
+	buf_color.Buf_Size = Frame_DC.Buf_Size;
+
+	start_tick = __rdtsc();
+
+	for (y = 0; y < Frame_DC.Buf_Size.Height; y++)
+	{
+		y_0 = (double)y / (double)Frame_DC.Buf_Size.Height - 0.5;  // Получаем y_0 в диапазоне [-0.5 .. 0.5)
+		y_0 = y_0 * Main_Scale + Center_Y;
+
+		for (x = 0; x < Frame_DC.Buf_Size.Width; x++)
+		{
+			x_0 = (double)x / (double)Frame_DC.Buf_Size.Width - 0.5;  // Получаем x_0 в диапазоне [-0.5 .. 0.5)
+			x_0 = x_0 * x_scale + Center_X;
+
+			//x_n = 0.0;
+			//y_n = 0.0;
+
+			//for (i = 0; i < Frame_DC.Colors_Count; i++)
+			//{
+			//	x_n1 = x_n * x_n - y_n * y_n + x_0;
+			//	y_n1 = 2.0 * x_n * y_n + y_0;
+
+			//	distance = x_n1 * x_n1 + y_n1 * y_n1;
+			//	if (distance > 4.0)
+			//		break;
+
+			//	x_n = x_n1;
+			//	y_n = y_n1;
+			//}
+
+			//i = Get_Mandelbrot_Index(x_0, y_0, Frame_DC.Colors_Count);
+
+			i = Asm_Get_Mandelbrot_Index(video_buf, x_0, y_0, Frame_DC.Colors_Count);
+
+			//if (i != asm_i)
+			//	int yy = 0;
+
+			if (i == Frame_DC.Colors_Count)
+				color = 0;
+			else
+				color = Frame_DC.Palette_RGB[i];
+
+			point.X = x;
+			point.Y = y;
+			buf_color.Color = color;
+
+			Asm_Set_Pixel(video_buf, point, buf_color);
+		}
+	}
+	end_tick = __rdtsc();
+
+	delta_tick = end_tick - start_tick;  // 5093001763, 3751900039, 5200691303
+													 // 2727803128, 2765620013, 2706357627
+													 // 1210792061, 2677300722, 2686828144
+													 // 1030110525,  689050866, 1027039255
 
 	SetPixel(frame_dc, Frame_DC.Buf_Size.Width / 2, Frame_DC.Buf_Size.Height / 2, RGB(255, 255, 255));  // 3820570558, 3829638160, 3826690214
 }
@@ -589,21 +702,65 @@ void On_Paint(HWND hwnd)
 	//Clear_Screen(frame_dc);
 	//Draw_Line(frame_dc);
 
-	Main_Scale /= 2.0f;
+	//Main_Scale /= 2.0f;
 	//Main_Scale = 0.00000000000001;
 
-	Draw_Mandelbrot(frame_dc);
+	Draw_Mandelbrot_Fast(frame_dc);
 
 	//Frame_DC.Draw_Grayscale_Palette(frame_dc);
 	//Frame_DC.Draw_Color_Palette(frame_dc);
 	//Frame_DC.Draw_Multi_Color_Palette(frame_dc);
 	//Frame_DC.Draw_Web_Palette(frame_dc);
 
-	InvalidateRect(hwnd, &ps.rcPaint, FALSE);
+	//InvalidateRect(hwnd, &ps.rcPaint, FALSE);
 
 	BitBlt(hdc, 0, 0, Frame_DC.Buf_Size.Width, Frame_DC.Buf_Size.Height, frame_dc, 0, 0, SRCCOPY);
 
 	EndPaint(hwnd, &ps);
+}
+//------------------------------------------------------------------------------------------------------------
+void Invalidate_Window_Rect(HWND hwnd)
+{
+	RECT win_rect;
+	win_rect.left = 0;
+	win_rect.top = 0;
+	win_rect.right = Frame_DC.Buf_Size.Width;
+	win_rect.bottom = Frame_DC.Buf_Size.Height;
+
+
+	InvalidateRect(hwnd, &win_rect, FALSE);
+}
+//------------------------------------------------------------------------------------------------------------
+void On_Mouse_Down(HWND hwnd, unsigned int lParam)
+{
+	int x_pos, y_pos;
+	int window_center_x_pos = Frame_DC.Buf_Size.Width / 2;
+	int window_center_y_pos = Frame_DC.Buf_Size.Height / 2;
+	double center_x_offset, center_y_offset;
+	double ratio = (double)Frame_DC.Buf_Size.Width / (double)Frame_DC.Buf_Size.Height;
+
+	x_pos = lParam & 0xffff;
+	y_pos = Frame_DC.Buf_Size.Height - (lParam >> 16) & 0xffff;
+
+	center_x_offset = (double)(x_pos - window_center_x_pos) / (double)Frame_DC.Buf_Size.Width * ratio;
+	center_y_offset = (double)(y_pos - window_center_y_pos) / (double)Frame_DC.Buf_Size.Height;
+
+	Center_X += center_x_offset * Main_Scale;
+	Center_Y += center_y_offset * Main_Scale;
+
+	Invalidate_Window_Rect(hwnd);
+}
+//------------------------------------------------------------------------------------------------------------
+void On_Mouse_Wheel(HWND hwnd, int wParam)
+{
+	int wheel_delta = wParam >> 16;
+
+	if (wheel_delta > 0)
+		Main_Scale /= 2.0;
+	else
+		Main_Scale *= 2.0;
+
+	Invalidate_Window_Rect(hwnd);
 }
 //------------------------------------------------------------------------------------------------------------
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -633,6 +790,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		On_Paint(hWnd);
 	break;
 
+
+	case WM_LBUTTONDOWN:
+		if (wParam == MK_LBUTTON)
+			On_Mouse_Down(hWnd, (unsigned int)lParam);
+
+		break;
+
+	case WM_MOUSEWHEEL:
+		On_Mouse_Wheel(hWnd, (int)wParam);
+		break;
 
 	case WM_DESTROY:
 		PostQuitMessage(0);
